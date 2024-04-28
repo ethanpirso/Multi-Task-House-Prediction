@@ -8,15 +8,13 @@ def load_data(filepath):
     return pd.read_csv(filepath)
 
 def simplify_house_category(df):
-    # Calculate the mean year for 'Year Built' and 'Year Remod/Add'
-    year_built_mean = df['YearBuilt'].mean()
-    year_remod_mean = df['YearRemodAdd'].mean()
+    # Calculate age of home from 'Year Built' and adjust by 20% of the difference between years since 'Year Remod/Add', then categorize into quartiles
+    current_year = 2016
+    df['Age'] = current_year - df['YearBuilt']
+    df['AdjustedAge'] = df['Age'] - 0.2 * (current_year - df['YearRemodAdd'])
+    df['AgeQuartileCategory'] = pd.qcut(df['AdjustedAge'], q=2, labels=['New', 'Old'])
 
-    # Define binary categories for 'Year Built' and 'Year Remod/Add' based on the mean
-    df['YearBuiltCategory'] = pd.cut(df['YearBuilt'], bins=[df['YearBuilt'].min()-1, year_built_mean, df['YearBuilt'].max()], 
-                                     labels=[f'Old', f'New'])
-    df['YearRemodCategory'] = pd.cut(df['YearRemodAdd'], bins=[df['YearRemodAdd'].min()-1, year_remod_mean, df['YearRemodAdd'].max()], 
-                                     labels=[f'NotRecentlyRemodeled', f'RecentlyRemodeled'])
+    print(df['AdjustedAge'].describe())
 
     # Simplify 'House Style' into 'Single-Level' and 'Multi-Level'
     def simplify_style(style):
@@ -40,16 +38,16 @@ def simplify_house_category(df):
     df['BldgType'] = df['BldgType'].apply(simplify_building_type)
 
     # Apply the 'simplify_style' function to the 'HouseStyle' column
-    df['SimplifiedStyle'] = df['HouseStyle'].apply(simplify_style)
+    df['HouseStyle'] = df['HouseStyle'].apply(simplify_style)
 
-    # Create a new 'House Category' variable based on simplified 'House Style', 'Bldg Type', and the new year categories
-    df['HouseCategory'] = df.apply(lambda row: f"{row['SimplifiedStyle']}-{row['BldgType']}-{row['YearBuiltCategory']}-{row['YearRemodCategory']}", axis=1)
+    # Create a new 'House Category' variable based on simplified 'House Style', 'Bldg Type', and the new age category
+    df['HouseCategory'] = df.apply(lambda row: f"{row['HouseStyle']}-{row['BldgType']}-{row['AgeQuartileCategory']}", axis=1)
 
     # Print the unique values of the new 'House Category' variable
     print(df['HouseCategory'].unique())
 
     # Optionally, drop the columns that are no longer needed if they won't be used further
-    df.drop(['HouseStyle', 'BldgType', 'YearBuilt', 'YearRemodAdd', 'YearBuiltCategory', 'YearRemodCategory', 'SimplifiedStyle'], axis=1, inplace=True)
+    df.drop(['HouseStyle', 'BldgType', 'YearBuilt', 'YearRemodAdd', 'Age', 'AdjustedAge', 'AgeQuartileCategory'], axis=1, inplace=True)
     return df
 
 def preprocess_data(df):
